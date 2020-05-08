@@ -20,6 +20,15 @@ OTHER_TYPE = "#other#"
 ## Randomly generated set of programs that comprises about 5% of dataset.
 TEST_SET_PROGS = ['httparty', 'octokit.rb', 'meta-tags', 'mustache', 'meta-tags','reality', 'twitter_ebooks', 'vagrant-aws', 'method_source','faraday', 'wordpress-exploit-framework', 'shoes4', 'mongoid','md2key', 'childprocess', 'psd.rb', 'engine', 'rspec-rails','mongo', 'bh', 'her', 'newrelic_rpm', 'slack-ruby-bot', 'reality','ci', 'active_shipping', 'artoo', 'byebug', 'CompassApp','hamster', 'factory_girl', 'redis-rb', 'factory_bot', 'by_star','airbrake', 'seedbank', 'fog-xml', 'sensu', 'dpl','metasploit-framework']
 
+def ensure_dir(dir_name):
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+
+## Make necessary dirs
+ensure_dir('tokenizers')
+ensure_dir('models')
+ensure_dir('labels')
+
 def create_names_dataset(file_name,test_data=False):
     data_file = json.load(open(file_name, 'r'))
     # dataset will be a list of dicts of structure {'input': 'IDENTIFER_NAME', 'output': 'TYPE', 'program': 'PROGRAM_NAME'}
@@ -227,8 +236,6 @@ def prepare_data(dataset, lang_tokenizer, label_to_idx, use_other):
     return tf.data.Dataset.from_tensor_slices((in_data, output_data))
 
 def save_labels(d, name):
-    if not os.path.exists('labels'):
-        os.makedirs('labels')
     with open('labels/'+ name + '.pkl', 'wb') as f:
         pickle.dump(d, f, pickle.HIGHEST_PROTOCOL)
 
