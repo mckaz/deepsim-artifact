@@ -10,11 +10,11 @@ from torch.utils.data.dataset import Dataset
 from tensorflow.keras.models import load_model
 import setup_model
 
-MODEL_TYPE = "names"
+MODEL_TYPE = "comments"
 LABEL_CHOICE = "TOP"
 USE_OTHER_TYPE = False
 
-DATA_FILE='../type-data.json'
+DATA_FILE='./type-data.json'
 
 ## LOAD TOKENIZER    
 with open('tokenizers/{}_tokenizer.pickle'.format(MODEL_TYPE), 'rb') as handle:
@@ -26,7 +26,7 @@ with open('labels/{}_{}_idx_to_label.pkl'.format(MODEL_TYPE, LABEL_CHOICE), 'rb'
 
 ## LOAD LABELS
 with open('labels/{}_{}_label_to_idx.pkl'.format(MODEL_TYPE, LABEL_CHOICE), 'rb') as f:    
-    idx_to_label = pickle.load(f)
+    label_to_idx = pickle.load(f)
     
 ## LOAD SAVED MODEL
 model = load_model('models/{}_{}_model.h5'.format(MODEL_TYPE, LABEL_CHOICE))

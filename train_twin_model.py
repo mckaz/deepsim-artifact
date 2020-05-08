@@ -34,7 +34,7 @@ DELIMITER = "^"
 ## Gives type of input to train network on.
 input_type = "nc"
 
-DATA_SIZE = 100000
+DATA_SIZE = 500000
 
 if USE_OTHER_TYPE:
     other_tag = "_OTHER_"
@@ -54,14 +54,14 @@ else:
 lang_tokenizer = setup_model.create_tokenizer(dataset)
 vocab_size = max(lang_tokenizer.index_word.keys())
 ## SAVE TOKENIZER
-with open('tokenizers/names_tokenizer.pickle', 'wb') as handle:
+with open('tokenizers/twin_{}_tokenizer.pickle'.format(input_type), 'wb') as handle:
     pickle.dump(lang_tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
 ## LOAD TOKENIZER    
-#with open('tokenizers/names_tokenizer.pickle', 'rb') as handle:
+#with open('tokenizers/twin_{}_tokenizer.pickle'.format(input_type), 'rb') as handle:
 #    lang_tokenizer = pickle.load(handle)
 label_to_idx, idx_to_label = setup_model.create_labels(dataset, prog_type_dict, LABEL_CHOICE, USE_OTHER_TYPE, LABEL_NUM, MIN_PROGNUM_LABELS)
-setup_model.save_labels(label_to_idx, 'names_{}_{}label_to_idx'.format(LABEL_CHOICE, other_tag))
-setup_model.save_labels(idx_to_label, 'names_{}_{}idx_to_label'.format(LABEL_CHOICE, other_tag))
+setup_model.save_labels(label_to_idx, 'twin_{}_{}_{}label_to_idx'.format(input_type, LABEL_CHOICE, other_tag))
+setup_model.save_labels(idx_to_label, 'twin_{}_{}_{}idx_to_label'.format(input_type, LABEL_CHOICE, other_tag))
 num_labels = len(label_to_idx)
 train_dataset, dev_dataset = setup_model.split_train_dev(dataset)
 #train_ds = setup_model.prepare_data(train_dataset, lang_tokenizer, label_to_idx, USE_OTHER_TYPE)
@@ -107,7 +107,7 @@ optimizer = tf.keras.optimizers.Adam(lr = 0.00006)
 model.compile(loss="binary_crossentropy",optimizer=optimizer, metrics=['accuracy'])
 model.fit(x=train_ds[0], y=train_ds[1], epochs=10)
 
-model.save('models/twin_{}_{}_PROG_model.h5'.format(LABEL_CHOICE, other_tag))
+model.save('models/twin__{}_{}_{}_PROG_model.h5'.format(input_type, LABEL_CHOICE, other_tag))
 
     
 
