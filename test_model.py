@@ -41,7 +41,7 @@ def evaluate_test_set():
         ### TODO: twin model tests
 
     test_ds = setup_model.prepare_data(test_dataset, lang_tokenizer, label_to_idx, USE_OTHER_TYPE)
-    model.evaluate(test_ds, batch_size=128)
+    model.evaluate(test_ds)#, batch_size=128)
 
 
 
