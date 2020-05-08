@@ -214,7 +214,7 @@ def split_train_dev(dataset):
     train_dataset, dev_dataset = torch.utils.data.random_split(dataset, [train_size, dev_size])
     return [train_dataset, dev_dataset]
 
-def prepare_data(dataset, lang_tokenizer, label_to_idx, use_other):
+def prepare_data(dataset, lang_tokenizer, label_to_idx, use_other, test=False):
     ## prepare input/output data
     input_data = []
     output_data = []
@@ -232,8 +232,13 @@ def prepare_data(dataset, lang_tokenizer, label_to_idx, use_other):
     ## pad sequences so they're all same length
     in_data = tf.keras.preprocessing.sequence.pad_sequences(input_data).squeeze()
 
-    ## slice in/out data together to create dataset
-    return tf.data.Dataset.from_tensor_slices((in_data, output_data))
+
+    if test:
+        ## for testing, keep in/out data separate
+        return [in_data, output_data]
+    else:
+        ## otherwise, slice in/out data together to create dataset
+        return tf.data.Dataset.from_tensor_slices((in_data, output_data))
 
 def save_labels(d, name):
     with open('labels/'+ name + '.pkl', 'wb') as f:

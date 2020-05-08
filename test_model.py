@@ -40,7 +40,8 @@ def evaluate_test_set():
         test_dataset, _ = setup_model.create_nc_dataset(DATA_FILE, True)
         ### TODO: twin model tests
 
-    test_ds = setup_model.prepare_data(test_dataset, lang_tokenizer, label_to_idx, USE_OTHER_TYPE)
+
+    test_ds = setup_model.prepare_data(test_dataset, lang_tokenizer, label_to_idx, USE_OTHER_TYPE, True)
     model.evaluate(test_ds)#, batch_size=128)
 
 
