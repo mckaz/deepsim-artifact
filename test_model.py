@@ -9,6 +9,8 @@ import torch
 from torch.utils.data.dataset import Dataset
 from tensorflow.keras.models import load_model
 import setup_model
+from sklearn.metrics import classification_report
+
 
 MODEL_TYPE = "comments"
 LABEL_CHOICE = "TOP"
@@ -40,9 +42,16 @@ def evaluate_test_set():
         test_dataset, _ = setup_model.create_nc_dataset(DATA_FILE, True)
         ### TODO: twin model tests
 
+#<<<<<<< HEAD
 
-    test_ds = setup_model.prepare_data(test_dataset, lang_tokenizer, label_to_idx, USE_OTHER_TYPE, True)
-    model.evaluate(test_ds)#, batch_size=128)
+#    test_ds = setup_model.prepare_data(test_dataset, lang_tokenizer, label_to_idx, USE_OTHER_TYPE, True)
+#    model.evaluate(test_ds)#, batch_size=128)
+#=======
+    test_xs, test_ys = setup_model.prepare_data(test_dataset, lang_tokenizer, label_to_idx, USE_OTHER_TYPE, True)
+    y_preds = model.predict(test_xs)
+    y_preds_bool = np.argmax(y_preds, axis=1)
+    print(classification_report(test_ys, y_preds_bool))
+#>>>>>>> 3fdefbd443722b975021e5ba98d162a65c918134
 
 
 

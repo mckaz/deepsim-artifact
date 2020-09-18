@@ -1,6 +1,7 @@
 models/
 tokenizers/
 labels/
+pretrained_codebert/
 __pycache__
 *.json
 *.pyc
