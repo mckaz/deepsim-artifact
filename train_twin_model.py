@@ -7,7 +7,7 @@ from operator import itemgetter
 import torch
 from torch.utils.data.dataset import Dataset
 from tensorflow.keras import backend as K
-
+from tensorflow.keras.callbacks import EarlyStopping
 
 
 DATA_FILE='./type-data.json'
@@ -18,7 +18,9 @@ DATA_FILE='./type-data.json'
 LABEL_CHOICE = "TOP"
 
 ## Number of labels to pick from.
-LABEL_NUM = 1000
+LABEL_NUM = 10000
+
+EPOCHS=30
 
 ## When LABEL_CHOICE is "PROG", this is the minimum number of programs a type should occur
 ## in for it to be used as a label.
@@ -32,7 +34,7 @@ DELIMITER = "^"
 
 ## Should be "names", "comments" or "nc" (which is combination of both).
 ## Gives type of input to train network on.
-input_type = "nc"
+input_type = "names"
 
 DATA_SIZE = 500000
 
@@ -67,7 +69,8 @@ train_dataset, dev_dataset = setup_model.split_train_dev(dataset)
 #train_ds = setup_model.prepare_data(train_dataset, lang_tokenizer, label_to_idx, USE_OTHER_TYPE)
 #dev_ds = setup_model.prepare_data(dev_dataset, lang_tokenizer, label_to_idx, USE_OTHER_TYPE)
 #train_ds = setup_model.get_twin_data(train_dataset, DATA_SIZE, lang_tokenizer, label_to_idx, USE_OTHER_TYPE)
-train_ds = setup_model.get_prog_twin_data(train_dataset, DATA_SIZE, lang_tokenizer, label_to_idx, USE_OTHER_TYPE)
+train_ds = setup_model.get_prog_twin_data(train_dataset, DATA_SIZE, lang_tokenizer, label_to_idx, USE_OTHER_TYPE, 90)
+dev_ds = setup_model.get_prog_twin_data(dev_dataset, int(DATA_SIZE * 0.1), lang_tokenizer, label_to_idx, USE_OTHER_TYPE, 90)
 input_dim = len(train_ds[0][0][0])
 
 
@@ -105,9 +108,10 @@ model = get_twin_net(input_dim)
 
 optimizer = tf.keras.optimizers.Adam(lr = 0.00006)
 model.compile(loss="binary_crossentropy",optimizer=optimizer, metrics=['accuracy'])
-model.fit(x=train_ds[0], y=train_ds[1], epochs=10)
+#es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=2)
+model.fit(x=train_ds[0], y=train_ds[1], epochs=EPOCHS, validation_data=dev_ds)#,callbacks=[es])
 
-model.save('models/twin__{}_{}_{}_PROG_model.h5'.format(input_type, LABEL_CHOICE, other_tag))
+model.save('models/twin__{}_{}_{}_{}_{}_PROG_model.h5'.format(input_type, LABEL_CHOICE, EPOCHS, other_tag, DATA_SIZE))
 
     
 

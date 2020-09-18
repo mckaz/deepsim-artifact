@@ -325,7 +325,7 @@ def get_twin_data(dataset, data_size, lang_tokenizer, label_to_idx, use_other):
 
 ## Similar to above method, but here pairs are created from
 ## types belonging to the same program.
-def get_prog_twin_data(dataset, data_size, lang_tokenizer, label_to_idx, use_other):
+def get_prog_twin_data(dataset, data_size, lang_tokenizer, label_to_idx, use_other, seq_size):
     ## prepare input/output data
     input_data = []
     output_data = []
@@ -350,7 +350,7 @@ def get_prog_twin_data(dataset, data_size, lang_tokenizer, label_to_idx, use_oth
             #label_input_map.setdefault(output_idx, []).append(input_seq)
 
     ## pad sequences so they're all same length
-    in_data = tf.keras.preprocessing.sequence.pad_sequences(input_data).squeeze()
+    in_data = tf.keras.preprocessing.sequence.pad_sequences(input_data, maxlen=seq_size).squeeze()
 
     ## create mapping from each program to each label to set of inputs of that label for that program
     prog_label_input_map = {}
@@ -387,9 +387,9 @@ def get_prog_twin_data(dataset, data_size, lang_tokenizer, label_to_idx, use_oth
 
     ## targets is array of labels for data in `pairs`.
     ## Labels are similarity scores, 0 == no similarity, 1 == high similarity.
-    ## Make second half of targets all 1s, and we will make pairs match this configuration.
+    ## Make second portion of targets all 1s, and we will make pairs match this configuration.
     targets=np.zeros((data_size,))
-    targets[data_size//2:] = 1
+    targets[int(data_size*0.8):] = 1
 
     for i in range(data_size):
         ## pick first program
@@ -404,8 +404,8 @@ def get_prog_twin_data(dataset, data_size, lang_tokenizer, label_to_idx, use_oth
                                        
         pairs[0][i] = chosen_in1
 
-        ## for first half of data, choose dissimilar points. second half choose similar points.
-        if i >= data_size // 2:
+        ## for first portion of data, choose dissimilar points. second portion choose similar points.
+        if i > int(data_size * 0.8):
             chosen_type2 = chosen_type1
             in2_idx = rng.choice([x for x in range(len(prog_label_input_map[prog][chosen_type1])) if x!=in1_idx])
             chosen_in2 = prog_label_input_map[prog][chosen_type1][in2_idx]

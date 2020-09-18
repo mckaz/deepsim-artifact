@@ -1,6 +1,7 @@
 #!/bin/bash
 
-bin=/nfs/raid88/u10/users/bmin/bet-rtx8000-100/apps/venv/py-ml-type-inf/bin/python
+#bin=/nfs/raid88/u10/users/bmin/bet-rtx8000-100/apps/venv/py-ml-type-inf/bin/python
+bin=/h/milod/tmp/bin/python
 
 for lr in 1e-3 5e-4 1e-4 5e-5  
 do
