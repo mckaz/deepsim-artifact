@@ -1,3 +1,4 @@
+# Run with: python -m flask run
 from flask import Flask, jsonify, request
 import json
 import numpy as np
@@ -20,32 +21,25 @@ app = Flask(__name__)
 DATA_FILE='../type-data.json'
 
 ## LOAD TOKENIZER    
-with open('tokenizers/twin_nc_tokenizer.pickle', 'rb') as handle:
+#with open('tokenizers/twin_nc_tokenizer.pickle', 'rb') as handle:
+with open('tokenizers/twin_names_tokenizer.pickle', 'rb') as handle:
     lang_tokenizer = pickle.load(handle)
-
-## LOAD LABELS
-with open('labels/twin_nc_TOP_idx_to_label.pkl', 'rb') as f:    
-    idx_to_label = pickle.load(f)
-
-## LOAD LABELS
-with open('labels/twin_nc_TOP_label_to_idx.pkl', 'rb') as f:    
-    label_to_idx = pickle.load(f)
     
 ## LOAD SAVED MODEL
-model = load_model('models/twin__nc_TOP__PROG_model.h5')
+model = load_model('models/twin__names_TOP__500000_PROG_model.h5')#twin__nc_TOP__PROG_model.h5')
 
 
 # in1 and in2 are lists of strings to be run through twin model
 # i.e., in1[0] compared with in2[0], in1[1] compared with in2[1]...
 def run_twin_model(in1, in2):
-    in1 = tf.keras.preprocessing.sequence.pad_sequences(lang_tokenizer.texts_to_sequences(in1), maxlen = 550).squeeze()
-    in2 = tf.keras.preprocessing.sequence.pad_sequences(lang_tokenizer.texts_to_sequences(in2), maxlen = 550).squeeze()
+    in1 = tf.keras.preprocessing.sequence.pad_sequences(lang_tokenizer.texts_to_sequences(in1), maxlen = 90)#.squeeze()
+    in2 = tf.keras.preprocessing.sequence.pad_sequences(lang_tokenizer.texts_to_sequences(in2), maxlen = 90)#.squeeze()
     pred = model.predict([in1, in2])
     ## pred is Array<List<List<Float>>>, e.g.:
     #array([[0.94821054],
     #   [0.01682347]], dtype=float32)
 
-    return pred[0]
+    return pred
 
 
 def get_average(scores):
@@ -68,10 +62,11 @@ def receive():
     print(words)
     print(type(words))
     scores = run_twin_model(words1, words2)
-    av = get_average(scores)
+    av = np.mean(scores)
+    #av = get_average(scores)
     #in1 = request.args.get("in1")
     #in2 = request.args.get("in1")
-    return "blah"#run_twin_model(in1, in2)
+    return str(av)
 
 
 
