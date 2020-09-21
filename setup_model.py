@@ -325,7 +325,7 @@ def get_twin_data(dataset, data_size, lang_tokenizer, label_to_idx, use_other):
 
 ## Similar to above method, but here pairs are created from
 ## types belonging to the same program.
-def get_prog_twin_data(dataset, data_size, lang_tokenizer, label_to_idx, use_other, seq_size):
+def get_prog_twin_data(dataset, data_size, lang_tokenizer, label_to_idx, use_other, seq_size, bert):
     ## prepare input/output data
     input_data = []
     output_data = []
@@ -335,14 +335,20 @@ def get_prog_twin_data(dataset, data_size, lang_tokenizer, label_to_idx, use_oth
         ## only use data which falls in top N types
         ## TODO: do we want to have an "other" type?
         if label_to_idx.get(sample['output'], -1) > -1:
-            input_seq = lang_tokenizer.texts_to_sequences(sample['input'])
+            if bert:
+                input_seq = sample['input']#lang_tokenizer(sample['input'], padding='max_length', max_length=seq_size)
+            else:
+                input_seq = lang_tokenizer.texts_to_sequences(sample['input'])
             input_data.append(input_seq)
             output_idx = label_to_idx[sample['output']]
             output_data.append(output_idx)
             program_labels.append(sample['program'])
             #label_input_map.setdefault(output_idx, []).append(input_seq)
         elif use_other:
-            input_seq = lang_tokenizer.texts_to_sequences(sample['input'])
+            if bert:
+                lang_tokenizer(sample['input'], padding='max_length', max_length=seq_size)
+            else:
+                input_seq = lang_tokenizer.texts_to_sequences(sample['input'])
             input_data.append(input_seq)
             output_idx = label_to_idx[OTHER_TYPE]
             output_data.append(output_idx)
@@ -350,7 +356,10 @@ def get_prog_twin_data(dataset, data_size, lang_tokenizer, label_to_idx, use_oth
             #label_input_map.setdefault(output_idx, []).append(input_seq)
 
     ## pad sequences so they're all same length
-    in_data = tf.keras.preprocessing.sequence.pad_sequences(input_data, maxlen=seq_size).squeeze()
+    if bert:
+        in_data = input_data
+    else:
+        in_data = tf.keras.preprocessing.sequence.pad_sequences(input_data, maxlen=seq_size).squeeze()
 
     ## create mapping from each program to each label to set of inputs of that label for that program
     prog_label_input_map = {}
@@ -379,11 +388,16 @@ def get_prog_twin_data(dataset, data_size, lang_tokenizer, label_to_idx, use_oth
     #    del prog_label_input_map[prog][typ]
     for prog in progs_to_delete:
         del prog_label_input_map[prog]
-            
-    num_data, in_dim = in_data.shape
 
-    ## pairs is list of two arrays. for all i, pairs[0][i] and pairs[1][i] constitute a single datapoint.
-    pairs = [np.zeros((data_size, in_dim)) for i in range(2)]
+    if bert:
+        pairs = [[],[]]
+    else:
+        #num_data, in_dim = in_data.shape
+        num_data = len(in_data)
+        in_dim = seq_size
+
+        ## pairs is list of two arrays. for all i, pairs[0][i] and pairs[1][i] constitute a single datapoint.
+        pairs = [np.zeros((data_size, in_dim)) for i in range(2)]
 
     ## targets is array of labels for data in `pairs`.
     ## Labels are similarity scores, 0 == no similarity, 1 == high similarity.
@@ -401,8 +415,10 @@ def get_prog_twin_data(dataset, data_size, lang_tokenizer, label_to_idx, use_oth
         ## pick first input
         in1_idx = rng.randint(len(prog_label_input_map[prog][chosen_type1]))
         chosen_in1 = prog_label_input_map[prog][chosen_type1][in1_idx]
-                                       
-        pairs[0][i] = chosen_in1
+        if bert:
+            pairs[0].append(chosen_in1)
+        else:
+            pairs[0][i] = chosen_in1
 
         ## for first portion of data, choose dissimilar points. second portion choose similar points.
         if i > int(data_size * 0.8):
@@ -413,6 +429,14 @@ def get_prog_twin_data(dataset, data_size, lang_tokenizer, label_to_idx, use_oth
             chosen_type2 = rng.choice([x for x in prog_label_input_map[prog].keys() if chosen_type1 != x])
             chosen_in2 = prog_label_input_map[prog][chosen_type2][rng.randint(len(prog_label_input_map[prog][chosen_type2]))]
 
-        pairs[1][i] = chosen_in2
+        if bert:
+            pairs[1].append(chosen_in2)
+        else:
+            pairs[1][i] = chosen_in2
 
-    return pairs, targets
+    if bert:
+        in1 = np.array(lang_tokenizer(pairs[0], padding='max_length', max_length=seq_size)['input_ids'])
+        in2 = np.array(lang_tokenizer(pairs[1], padding='max_length', max_length=seq_size)['input_ids'])
+        return [in1, in2], targets
+    else: 
+        return pairs, targets

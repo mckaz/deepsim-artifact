@@ -69,36 +69,30 @@ train_dataset, dev_dataset = setup_model.split_train_dev(dataset)
 #train_ds = setup_model.prepare_data(train_dataset, lang_tokenizer, label_to_idx, USE_OTHER_TYPE)
 #dev_ds = setup_model.prepare_data(dev_dataset, lang_tokenizer, label_to_idx, USE_OTHER_TYPE)
 #train_ds = setup_model.get_twin_data(train_dataset, DATA_SIZE, lang_tokenizer, label_to_idx, USE_OTHER_TYPE)
-train_ds = setup_model.get_prog_twin_data(train_dataset, DATA_SIZE, lang_tokenizer, label_to_idx, USE_OTHER_TYPE, 90)
-dev_ds = setup_model.get_prog_twin_data(dev_dataset, int(DATA_SIZE * 0.1), lang_tokenizer, label_to_idx, USE_OTHER_TYPE, 90)
+train_ds = setup_model.get_prog_twin_data(train_dataset, DATA_SIZE, lang_tokenizer, label_to_idx, USE_OTHER_TYPE, 90, False)
+dev_ds = setup_model.get_prog_twin_data(dev_dataset, int(DATA_SIZE * 0.1), lang_tokenizer, label_to_idx, USE_OTHER_TYPE, 90, False)
 input_dim = len(train_ds[0][0][0])
 
 
 def get_twin_net(input_dim):
     left_input = tf.keras.Input(input_dim)
     right_input = tf.keras.Input(input_dim)
-
     encoder_model = tf.keras.Sequential([
         tf.keras.layers.Embedding(vocab_size + 1, 128, mask_zero=True),
         tf.keras.layers.LSTM(64),
         tf.keras.layers.Dense(64, activation='relu'),
         tf.keras.layers.Dense(num_labels + 1, activation='sigmoid')
     ])
-
     # Generate the encodings (feature vectors) for the two images
     encoded_l = encoder_model(left_input)
     encoded_r = encoder_model(right_input)
-
     # Add a customized layer to compute the absolute difference between the encodings
     L1_layer = tf.keras.layers.Lambda(lambda tensors:K.abs(tensors[0] - tensors[1]))
     L1_distance = L1_layer([encoded_l, encoded_r])
-
     # Add a dense layer with a sigmoid unit to generate the similarity score
     prediction = tf.keras.layers.Dense(1,activation='sigmoid')(L1_distance)
-
     # Connect the inputs with the outputs
     twin_net = tf.keras.models.Model(inputs=[left_input,right_input],outputs=prediction)
-    
     # return the model
     return twin_net
 
