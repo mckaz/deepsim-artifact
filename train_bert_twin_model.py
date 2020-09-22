@@ -22,7 +22,7 @@ DATA_FILE='./type-data.json'
 LABEL_CHOICE = "TOP"
 
 ## Number of labels to pick from.
-LABEL_NUM = 1000
+LABEL_NUM = 10000
 
 ## When LABEL_CHOICE is "PROG", this is the minimum number of programs a type should occur
 ## in for it to be used as a label.
@@ -95,3 +95,4 @@ optimizer = tf.keras.optimizers.Adam(lr = 0.00006)
 model.compile(loss="binary_crossentropy",optimizer=optimizer, metrics=['accuracy'])
 model.fit(x=train_ds[0], y=train_ds[1], epochs=EPOCHS, validation_data=dev_ds)
 
+model.save('models/twin_bert_{}_{}_{}_{}_{}_PROG_model.h5'.format(input_type, LABEL_CHOICE, EPOCHS, other_tag, DATA_SIZE))
