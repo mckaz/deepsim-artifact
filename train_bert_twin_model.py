@@ -77,12 +77,13 @@ def get_twin_net(input_dim):
     left_input = tf.keras.Input(input_dim, dtype='int64')
     right_input = tf.keras.Input(input_dim, dtype='int64')
     bert_model = TFRobertaModel.from_pretrained(bert_model_path, from_pt=True, config=config)
-    encoded_l = bert_model(left_input)[0]
-    encoded_r = bert_model(right_input)[0]
-    av_encoded_l = tf.keras.layers.Lambda(lambda x: K.mean(x, axis=1))(encoded_l)
-    av_encoded_r = tf.keras.layers.Lambda(lambda x: K.mean(x, axis=1))(encoded_r)
+    encoded_l = bert_model(left_input)[0][:,0,:]
+    encoded_r = bert_model(right_input)[0][:,0,:]
+    ## Commented out lines below use average of sequence vectors, instead of the aggregated CLS.
+    #av_encoded_l = tf.keras.layers.Lambda(lambda x: K.mean(x, axis=1))(encoded_l)
+    #av_encoded_r = tf.keras.layers.Lambda(lambda x: K.mean(x, axis=1))(encoded_r)
     L1_layer = tf.keras.layers.Lambda(lambda tensors:K.abs(tensors[0] - tensors[1]))
-    L1_distance = L1_layer([av_encoded_l, av_encoded_r])
+    L1_distance = L1_layer([encoded_l, encoded_r])
     prediction = tf.keras.layers.Dense(1,activation='sigmoid')(L1_distance)
     twin_net = tf.keras.models.Model(inputs=[left_input,right_input],outputs=prediction)
     return twin_net
