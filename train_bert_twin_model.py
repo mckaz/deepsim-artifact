@@ -14,7 +14,7 @@ bert_model_path = './pretrained_codebert'
 config_path="./pretrained_codebert/config.json"
 config = RobertaConfig.from_pretrained(config_path)
 
-DATA_FILE='../type-data.json'
+DATA_FILE='./type-data.json'
 
 ## LABEL_CHOICE:
 ##   -"TOP" if picking the top most occuring labels in the dataset
@@ -40,7 +40,7 @@ input_type = "names"
 
 DATA_SIZE = 100000
 
-EPOCHS = 1
+EPOCHS = 10
 
 if USE_OTHER_TYPE:
     other_tag = "_OTHER_"
@@ -66,7 +66,7 @@ train_dataset, dev_dataset = setup_model.split_train_dev(dataset)
 
 input_dim = 90
 train_ds = setup_model.get_prog_twin_data(train_dataset, DATA_SIZE, tokenizer, label_to_idx, USE_OTHER_TYPE, input_dim, True)
-#dev_ds = setup_model.get_prog_twin_data(dev_dataset, int(DATA_SIZE * 0.1), tokenizer, label_to_idx, USE_OTHER_TYPE, input_dim, True)
+dev_ds = setup_model.get_prog_twin_data(dev_dataset, int(DATA_SIZE * 0.1), tokenizer, label_to_idx, USE_OTHER_TYPE, input_dim, True)
 
 
 
@@ -79,8 +79,10 @@ def get_twin_net(input_dim):
     bert_model = TFRobertaModel.from_pretrained(bert_model_path, from_pt=True, config=config)
     encoded_l = bert_model(left_input)[0]
     encoded_r = bert_model(right_input)[0]
+    av_encoded_l = tf.keras.layers.Lambda(lambda x: K.mean(x, axis=1))(encoded_l)
+    av_encoded_r = tf.keras.layers.Lambda(lambda x: K.mean(x, axis=1))(encoded_r)
     L1_layer = tf.keras.layers.Lambda(lambda tensors:K.abs(tensors[0] - tensors[1]))
-    L1_distance = L1_layer([encoded_l, encoded_r])
+    L1_distance = L1_layer([av_encoded_l, av_encoded_r])
     prediction = tf.keras.layers.Dense(1,activation='sigmoid')(L1_distance)
     twin_net = tf.keras.models.Model(inputs=[left_input,right_input],outputs=prediction)
     return twin_net
@@ -91,5 +93,5 @@ model = get_twin_net(input_dim)
 
 optimizer = tf.keras.optimizers.Adam(lr = 0.00006)
 model.compile(loss="binary_crossentropy",optimizer=optimizer, metrics=['accuracy'])
-model.fit(x=train_ds[0], y=train_ds[1], epochs=EPOCHS)#, validation_data=dev_ds)
+model.fit(x=train_ds[0], y=train_ds[1], epochs=EPOCHS, validation_data=dev_ds)
 
