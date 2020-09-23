@@ -11,9 +11,9 @@ from tensorflow.keras import backend as K
 from transformers import RobertaTokenizer, TFRobertaModel, RobertaConfig
 
 
-bert_model_path = './pretrained_codebert'
-config_path="./pretrained_codebert/config.json"
-config = RobertaConfig.from_pretrained(config_path)
+#bert_model_path = './pretrained_codebert'
+#config_path="./pretrained_codebert/config.json"
+#config = RobertaConfig.from_pretrained(config_path)
 
 DATA_FILE='./type-data.json'
 
@@ -57,7 +57,8 @@ elif input_type == "nc":
 else:
     raise Exception("Got unexpected input_type of {}".format(input_type))
 
-tokenizer = RobertaTokenizer.from_pretrained('roberta-base', return_tensors='tf')
+#tokenizer = RobertaTokenizer.from_pretrained('roberta-base', return_tensors='tf')
+tokenizer = RobertaTokenizer.from_pretrained("microsoft/codebert-base", return_tensors='tf')
 label_to_idx, idx_to_label = setup_model.create_labels(dataset, prog_type_dict, LABEL_CHOICE, USE_OTHER_TYPE, LABEL_NUM, MIN_PROGNUM_LABELS)
 setup_model.save_labels(label_to_idx, 'twinbert_names_{}_{}label_to_idx'.format(LABEL_CHOICE, other_tag))
 setup_model.save_labels(idx_to_label, 'twinbert_names_{}_{}idx_to_label'.format(LABEL_CHOICE, other_tag))
@@ -77,7 +78,8 @@ dev_ds = setup_model.get_prog_twin_data(dev_dataset, int(DATA_SIZE * 0.1), token
 def get_twin_net(input_dim):
     left_input = tf.keras.Input(input_dim, dtype='int64')
     right_input = tf.keras.Input(input_dim, dtype='int64')
-    bert_model = TFRobertaModel.from_pretrained(bert_model_path, from_pt=True, config=config)
+    #bert_model = TFRobertaModel.from_pretrained(bert_model_path, from_pt=True, config=config)
+    bert_model = TFRobertaModel.from_pretrained("microsoft/codebert-base")
     encoded_l = bert_model(left_input)[0][:,0,:]
     encoded_r = bert_model(right_input)[0][:,0,:]
     ## Commented out lines below use average of sequence vectors, instead of the aggregated CLS.
@@ -97,4 +99,5 @@ optimizer = tf.keras.optimizers.Adam(lr = 0.00006)
 model.compile(loss="binary_crossentropy",optimizer=optimizer, metrics=['accuracy'])
 model.fit(x=train_ds[0], y=train_ds[1], epochs=EPOCHS, validation_data=dev_ds)
 
-model.save('models/twin_bert_{}_{}_{}_{}_{}_PROG_model.h5'.format(input_type, LABEL_CHOICE, EPOCHS, other_tag, DATA_SIZE))
+#model.save('models/twin_bert_{}_{}_{}_{}_{}_PROG_model.h5'.format(input_type, LABEL_CHOICE, EPOCHS, other_tag, DATA_SIZE))
+model.save_weights('models/twin_bert_{}_{}_{}_{}_{}_PROG_model'.format(input_type, LABEL_CHOICE, EPOCHS, other_tag, DATA_SIZE))
