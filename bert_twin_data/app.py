@@ -30,11 +30,11 @@ DATA_FILE='../type-data.json'
 
 ## LOAD TOKENIZER    
 #with open('tokenizers/twin_nc_tokenizer.pickle', 'rb') as handle:
-with open('tokenizers/twin_names_tokenizer.pickle', 'rb') as handle:
-    lang_tokenizer = pickle.load(handle)
+#with open('tokenizers/twin_names_tokenizer.pickle', 'rb') as handle:
+#    lang_tokenizer = pickle.load(handle)
     
 ## LOAD SAVED MODEL
-model = load_model('models/twin__nc_TOP__PROG_model.h5')#twin__names_TOP__500000_PROG_model.h5')#
+#model = load_model('models/twin__nc_TOP__PROG_model.h5')#twin__names_TOP__500000_PROG_model.h5')#
 
 tokenizer = RobertaTokenizer.from_pretrained("microsoft/codebert-base")
 bert_model = TFRobertaModel.from_pretrained("microsoft/codebert-base")
@@ -48,6 +48,8 @@ state = "open"
 running_list_of_vecs = []
 max_seq_length = 510
 
+pairs = [[],[]]
+targets = []
 
 # in1 and in2 are lists of strings to be run through twin model
 # i.e., in1[0] compared with in2[0], in1[1] compared with in2[1]...
@@ -268,6 +270,8 @@ def tsne_plot(obj_ids):
 def receive():
     global state
     global running_list_of_vecs
+    global pairs
+    global targets
     action = request.args.get("action")
     if (state != "open"):
         if (action != "bert_vectorize") or (request.args.get("category") != "var"):
@@ -331,6 +335,24 @@ def receive():
     elif (action == "visualize"):
         id_list = request.args.getlist("id_list")
         tsne_plot(id_list)
+        ret = True
+    elif (action == "save_point"):
+        in1 = int(request.args.get("in1"))
+        in2 = int(request.args.get("in2"))
+        target = int(request.args.get("target"))
+        if (in1 in vector_cache) and (in2 in vector_cache):
+            vec1 = vector_cache[in1]
+            vec2 = vector_cache[in2]
+            pairs[0].append(vec1)
+            pairs[1].append(vec2)
+            targets.append(target)
+        ret = True
+    elif (action == "save_all_points"):
+        value_type = request.args.get("value_type")
+        in1 = np.array(pairs[0])
+        in2 = np.array(pairs[1])
+        targets = np.array(targets)
+        np.savez_compressed("data_" + value_type + "_{}".format(len(pairs[0])), input1=in1, input2=in2, output=targets)
         ret = True
     else:
          raise Exception("Unexpected action in request: {}".format(action))   
