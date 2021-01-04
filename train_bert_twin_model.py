@@ -36,6 +36,6 @@ model = get_twin_net()
 
 optimizer = tf.keras.optimizers.Adam(lr = 0.00006)
 model.compile(loss="binary_crossentropy",optimizer=optimizer, metrics=['accuracy'])
-model.fit(x=[data['input1'], data['input2']], y=data['output'], epochs=EPOCHS, validation_data=dev_ds)
+model.fit(x=[data['input1'], data['input2']], y=data['output'], epochs=EPOCHS)#, validation_data=dev_ds)
 
 model.save('models/twin_bert_{}_{}_{}_model.h5'.format(input_type, LABEL_CHOICE, EPOCHS, other_tag, DATA_SIZE))
