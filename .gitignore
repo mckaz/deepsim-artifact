@@ -6,3 +6,4 @@ pretrained_codebert/
 __pycache__
 *.json
 *.pyc
+*.npz

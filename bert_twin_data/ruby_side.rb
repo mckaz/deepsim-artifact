@@ -1,7 +1,7 @@
 require "rdl"
 require "types/core"
 
-NUM_DATA_POINTS = 10 ## number of data points to generate
+NUM_DATA_POINTS = 100000 ## number of data points to generate
 DIFF_TYPE_SPLIT = 0.7 ## proportion of data points that correspond to *different* types
 VALUE_TYPE = "arg" ## "arg" or "ret"
 
@@ -92,7 +92,9 @@ class DataGenerator
 
   def self.vectorize_data(points)
     puts "Vectorizing data...".green
+    count = 1
     points.each { |in1, in2, _|
+      puts "Vectorizing point ##{count}"
       if VALUE_TYPE == "arg"
         ## each input has structure [param name, source]
         vectorize_var(in1[1], in1.object_id, in1[0])
@@ -104,35 +106,43 @@ class DataGenerator
       else
         raise "Unexpected value type #{VALUE_TYPE}."
       end
+      count += 1
     }
   end
 
   def self.save_points(points)
     puts "Saving vectorized points...".green
+    count = 0
     points.each { |in1, in2, target|
+      puts "Saving point #{count}..."
+      count += 1
       params = { action: "save_point", in1: in1.object_id, in2: in2.object_id, target: target }
       RDL::Heuristic.send_query(params)
     }
     params = { action: "save_all_points", value_type: "#{VALUE_TYPE}" }
-    RDL::Heuristic.send_query(params)
+    RDL::Heuristic.sxend_query(params)
   end
 
   def self.vectorize_var(source, obj_id, param=nil)
     return true if @vectorized_vars[obj_id] ## already vectorized and cached server side
-    puts "About to vectorize #{param}"
+    #puts "About to vectorize #{param}"
     if VALUE_TYPE == "arg"
       raise "Expected value for param." if param.nil?
-      ast = Parser::CurrentRuby.parse source
-      return nil if ast.nil?
+      begin
+        ast = Parser::CurrentRuby.parse source
+      rescue Parser::SyntaxError
+        return nil
+      end
+      return nil if ast.nil? || !((ast.type == :def) || (ast.type == :defs))
       locs = get_var_loc(ast, param)
       if locs.empty?
-        puts "Couldn't find any locations for param #{param} in source #{source}"
+        #puts "Couldn't find any locations for param #{param} in source #{source}"
         return nil
       end
       source = ast.loc.expression.source
-      puts "Querying for var #{param}"
-      puts "Sanity check: "
-      locs.each_slice(2) { |b, e| puts "    #{source[b..e]} from #{b}..#{e}" }
+      #puts "Querying for var #{param}"
+      #puts "Sanity check: "
+      #locs.each_slice(2) { |b, e| puts "    #{source[b..e]} from #{b}..#{e}" }
       params = { source: source, action: "bert_vectorize", object_id: obj_id, locs: locs, category: "arg" }
       RDL::Heuristic.send_query(params)
     elsif VALUE_TYPE == "var"
@@ -157,9 +167,9 @@ class DataGenerator
       locs = [ast.loc.name.begin_pos - begin_pos, ast.loc.name.end_pos - begin_pos-1] ## for now, let's just try using method name
       locs = locs + RDL::Heuristic.get_ret_sites(ast)
       
-      puts "Querying for return"
-      puts "Sanity check: "
-      locs.each_slice(2) { |b, e| puts "    #{source[b..e]} from #{b}..#{e}" }
+      #puts "Querying for return"
+      #puts "Sanity check: "
+      #locs.each_slice(2) { |b, e| puts "    #{source[b..e]} from #{b}..#{e}" }
       params = { source: source, action: "bert_vectorize", object_id: obj_id, locs: locs, category: "ret" }
       RDL::Heuristic.send_query(params)
     else
@@ -204,11 +214,11 @@ class DataGenerator
   
 end
 
-data = DataGenerator.read_in_data(DATA_FILE)
-data = DataGenerator.restructure_data(data)
-points = DataGenerator.generate_data_points(data)
-DataGenerator.vectorize_data(points)
-DataGenerator.save_points(points)
+DATA = DataGenerator.read_in_data(DATA_FILE)
+DATA = DataGenerator.restructure_data(DATA)
+POINTS = DataGenerator.generate_data_points(DATA)
+DataGenerator.vectorize_data(POINTS)
+DataGenerator.save_points(POINTS)
 
 
 

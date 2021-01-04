@@ -91,14 +91,14 @@ def split_into_windows(seq, window_size):
 ## max_seq_length token chunks, with a sliding window of max_seq_length/2, averaging overlap.
 def run_bert_model(source):
     tok = tokenizer.tokenize(source)
-    print("Running for total of {} tokens.".format(len(tok)))
+    #print("Running for total of {} tokens.".format(len(tok)))
     if len(tok) <= max_seq_length:
         enc = tokenizer.encode(tok, return_tensors="tf")
         res = bert_model(enc)
         bert_cache[source] = res[0][0]
         return res[0][0]
     windows = split_into_windows(tok, max_seq_length)
-    print("Total number of windows: {}".format(len(windows)))
+    #print("Total number of windows: {}".format(len(windows)))
     results = []
     for w in windows:
         enc = tokenizer.encode(w, return_tensors="tf")
@@ -163,7 +163,7 @@ def get_tok_ind(source, var_locs):
     tokenized = tokenizer.tokenize(source)
     begin_loc = int(var_locs[0]) ## beginning of var to find
     end_loc = int(var_locs[1]) ## end of var to find
-    print("Here with begin_loc {} and end_loc {}".format(begin_loc, end_loc))
+    #print("Here with begin_loc {} and end_loc {}".format(begin_loc, end_loc))
     inds = [] ## list of indices to be returned
     next_char = 0 ## next char to look at in the source string
     next_loc = 2 ## next begin_loc in var_locs to look at
@@ -173,10 +173,10 @@ def get_tok_ind(source, var_locs):
         #print("Observing token {} with next_char {} and token_end {}".format(tokenized[i], next_char, token_end))
         if ((token_end >= begin_loc) and (token_end < end_loc)):
             inds.append(i)
-            print("Using vector associated with token {}".format(tokenized[i]))
+            #print("Using vector associated with token {}".format(tokenized[i]))
         elif (token_end >= end_loc):
             inds.append(i)
-            print("Using vector associated with token {}".format(tokenized[i]))
+            #print("Using vector associated with token {}".format(tokenized[i]))
             if next_loc < len(var_locs):
                 ## if there are still begin/end location pairs, move to next pair
                 begin_loc = int(var_locs[next_loc])
@@ -291,28 +291,23 @@ def receive():
                 source = request.args.get("source")
                 locs = request.args.getlist("locs")
                 list_of_vecs = vectorize_locs(source, locs)
-                print("Caching object_id {}".format(object_id))
-                print("ABOUT TO ADD {} TO VECTOR_CACHE".format(object_id))
+                #print("Caching object_id {}".format(object_id))
                 vector_cache[object_id] = tf.reduce_mean(list_of_vecs, axis=0)
                 ret = True
         elif (category == "var"):
-            print("Here 1.")
             object_id = int(request.args.get("object_id"))
             average = request.args.get("average")
             if (state != "open") and (object_id != state):
                 raise Exception("Conflicting states.")
             if (average == "true"):
-                print("Here 2.")
                 vector_cache[object_id] = tf.reduce_mean(running_list_of_vecs, axis=0)
                 state = "open"
                 running_list_of_vecs = []
                 ret = True
             elif object_id not in vector_cache:
-                print("Here 3.")
                 state = object_id
                 source = request.args.get("source")
                 locs = request.args.getlist("locs")
-                print("Given locs {}".format(locs))
                 list_of_vecs = vectorize_locs(source, locs)
                 running_list_of_vecs += list_of_vecs
                 ret = True
@@ -348,11 +343,17 @@ def receive():
             targets.append(target)
         ret = True
     elif (action == "save_all_points"):
+        print("HERE 1")
         value_type = request.args.get("value_type")
+        print("HERE 2")
         in1 = np.array(pairs[0])
+        print("HERE 3")
         in2 = np.array(pairs[1])
+        print("HERE 4")
         targets = np.array(targets)
+        print("HERE 5")
         np.savez_compressed("data_" + value_type + "_{}".format(len(pairs[0])), input1=in1, input2=in2, output=targets)
+        print("HERE 6")
         ret = True
     else:
          raise Exception("Unexpected action in request: {}".format(action))   
@@ -363,4 +364,4 @@ def receive():
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(use_reloader=False)
