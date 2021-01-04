@@ -16,7 +16,7 @@ EPOCHS = 10
 
 data = np.load('bert_twin_data/data_{}_{}.npz'.format(DATA_TYPE, DATA_SIZE))
 
-def get_twin_net(input_dim):
+def get_twin_net():
     left_input = tf.keras.Input(768, dtype='float32') ## TODO: CONFIRM DTYPE
     right_input = tf.keras.Input(768, dtype='float32') ## TODO: CONFIRM DTYPE
 
@@ -32,7 +32,7 @@ def get_twin_net(input_dim):
     return twin_net
 
 
-model = get_twin_net(input_dim)
+model = get_twin_net()
 
 optimizer = tf.keras.optimizers.Adam(lr = 0.00006)
 model.compile(loss="binary_crossentropy",optimizer=optimizer, metrics=['accuracy'])
