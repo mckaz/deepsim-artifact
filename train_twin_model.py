@@ -102,7 +102,7 @@ model = get_twin_net(input_dim)
 
 optimizer = tf.keras.optimizers.Adam(lr = 0.00006)
 model.compile(loss="binary_crossentropy",optimizer=optimizer, metrics=['accuracy'])
-#es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=2)
+#es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=4)
 model.fit(x=train_ds[0], y=train_ds[1], epochs=EPOCHS, validation_data=dev_ds)#,callbacks=[es])
 
 model.save('models/twin__{}_{}_{}_{}_{}_PROG_model.h5'.format(input_type, LABEL_CHOICE, EPOCHS, other_tag, DATA_SIZE))

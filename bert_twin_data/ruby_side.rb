@@ -3,7 +3,7 @@ require "types/core"
 
 NUM_DATA_POINTS = 100000 ## number of data points to generate
 DIFF_TYPE_SPLIT = 0.7 ## proportion of data points that correspond to *different* types
-VALUE_TYPE = "arg" ## "arg" or "ret"
+VALUE_TYPE = "ret" ## "arg" or "ret"
 
 DATA_FILE = "../../type-data.json"
 
@@ -37,6 +37,7 @@ class DataGenerator
               new_data[program][type] << [param, source]
             }
           elsif (VALUE_TYPE == "ret")
+            next if meth_data["return"].nil? || meth_data["return"].empty?
             ret_type = meth_data["return"]["type"]
             new_data[program][ret_type] ||= [] ## will be list of source codes of methods
             new_data[program][ret_type] << source
@@ -120,7 +121,7 @@ class DataGenerator
       RDL::Heuristic.send_query(params)
     }
     params = { action: "save_all_points", value_type: "#{VALUE_TYPE}" }
-    RDL::Heuristic.sxend_query(params)
+    RDL::Heuristic.send_query(params)
   end
 
   def self.vectorize_var(source, obj_id, param=nil)
@@ -161,8 +162,12 @@ class DataGenerator
        send_query({ action: "bert_vectorize", object_id: var_type.object_id, category: "var", average: true })
 =end
     elsif VALUE_TYPE == "ret"
-      ast = Parser::CurrentRuby.parse source
-      return nil if ast.nil?
+      begin
+        ast = Parser::CurrentRuby.parse source
+      rescue Parser::SyntaxError
+        return nil
+      end
+      return nil if ast.nil? || !((ast.type == :def) || (ast.type == :defs))
       begin_pos = ast.loc.expression.begin_pos
       locs = [ast.loc.name.begin_pos - begin_pos, ast.loc.name.end_pos - begin_pos-1] ## for now, let's just try using method name
       locs = locs + RDL::Heuristic.get_ret_sites(ast)

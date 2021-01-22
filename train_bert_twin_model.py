@@ -17,8 +17,8 @@ EPOCHS = 10
 data = np.load('bert_twin_data/data_{}_{}.npz'.format(DATA_TYPE, DATA_SIZE))
 
 def get_twin_net():
-    left_input = tf.keras.Input(768, dtype='float32') ## TODO: CONFIRM DTYPE
-    right_input = tf.keras.Input(768, dtype='float32') ## TODO: CONFIRM DTYPE
+    left_input = tf.keras.Input(768, dtype='float32') 
+    right_input = tf.keras.Input(768, dtype='float32')
 
     L1_layer = tf.keras.layers.Lambda(lambda tensors:K.abs(tensors[0] - tensors[1]))
     L1_distance = L1_layer([left_input, right_input])
