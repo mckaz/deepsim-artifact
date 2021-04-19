@@ -20,15 +20,14 @@ from sklearn.metrics.pairwise import cosine_similarity
 from tensorflow.keras import backend as K
 from sklearn.manifold import TSNE
 import time
+import sys
 
 
-
+np.set_printoptions(threshold=sys.maxsize)
 
 app = Flask(__name__)
 
 
-
-DATA_FILE='../type-data.json'
 
 ## LOAD TOKENIZER    
 #with open('tokenizers/twin_nc_tokenizer.pickle', 'rb') as handle:
@@ -37,9 +36,10 @@ DATA_FILE='../type-data.json'
     
 ## LOAD SAVED MODEL
 #model = load_model('models/twin__nc_TOP__PROG_model.h5')#twin__names_TOP__500000_PROG_model.h5')#
-arg_model = load_model('bert_twin_data/models/twin_bert_arg_200_84349_model.h5')
-ret_model = load_model('bert_twin_data/models/twin_bert_ret_200_99167_model.h5')
-
+#arg_model = load_model('bert_twin_data/models/twin_bert_arg_200_84349_model.h5')
+#ret_model = load_model('bert_twin_data/models/twin_bert_ret_200_99167_model.h5')
+arg_model = load_model('bert_twin_data/twin_bert_arg_150epochs_100000dp_0.001lr_model.h5')#'bert_twin_data/models/twin_bert_arg_200_208398_model.h5')
+ret_model = load_model('bert_twin_data/twin_bert_ret_100epochs_100000dp_0.001lr_model.h5')#'bert_twin_data/models/twin_bert_ret_200_248215_model.h5')
 
 tokenizer = RobertaTokenizer.from_pretrained("microsoft/codebert-base")
 bert_model = TFRobertaModel.from_pretrained("microsoft/codebert-base")
@@ -93,6 +93,13 @@ def split_into_windows(seq, window_size):
 ## Not only calls BERT model, but also splits the input into equal sized,
 ## max_seq_length token chunks, with a sliding window of max_seq_length/2, averaging overlap.
 def run_bert_model(source):
+    global state
+    global running_list_of_vecs
+    global bert_cache
+    global vector_cache
+    global names_cache
+    global types_cache
+    
     tok = tokenizer.tokenize(source)
     #print("Running for total of {} tokens.".format(len(tok)))
     if len(tok) <= max_seq_length:
@@ -142,9 +149,16 @@ def run_bert_model(source):
     final_ret += code_results
     final_ret.append(fin_av)
     bert_cache[source] = final_ret
-    return final_ret 
+    return final_ret
 
 def vectorize_locs(source, locs):
+    global state
+    global running_list_of_vecs
+    global bert_cache
+    global vector_cache
+    global names_cache
+    global types_cache
+    
     tok_inds = get_tok_ind(source, locs)
     if source in bert_cache:
         #list_of_vecs = [bert_cache[source][0][0][index+1] for index in tok_inds if index <= 510]
@@ -163,6 +177,13 @@ def vectorize_locs(source, locs):
 ## Takes source [String] code and location loc [Integer] of relevant var,
 ## and returns the index [Integer] of the token corresponding to that var when source is tokenized.
 def get_tok_ind(source, var_locs):
+    global state
+    global running_list_of_vecs
+    global bert_cache
+    global vector_cache
+    global names_cache
+    global types_cache
+    
     tokenized = tokenizer.tokenize(source)
     begin_loc = int(var_locs[0]) ## beginning of var to find
     end_loc = int(var_locs[1]) ## end of var to find
@@ -210,6 +231,13 @@ def get_average(scores):
     return sum / len(scores)
 
 def tsne_plot(obj_ids):
+    global state
+    global running_list_of_vecs
+    global bert_cache
+    global vector_cache
+    global names_cache
+    global types_cache
+    
     vecs = [] ## list of BERT embeddings
     labels = [] ## list of names of vars/methods
     ts = [] ## list of types
@@ -266,6 +294,13 @@ def tsne_plot(obj_ids):
     #plt.show()
 
 def get_similarity(id1, id2, kind1, kind2):
+    global state
+    global running_list_of_vecs
+    global bert_cache
+    global vector_cache
+    global names_cache
+    global types_cache
+    
     in1 = vector_cache[id1]
     in2 = vector_cache[id2]
     if (kind1 != kind2) or (kind1 == "var"):
@@ -279,12 +314,43 @@ def get_similarity(id1, id2, kind1, kind2):
     else:
         raise Exception("Unexpected kind {}".format(kind1))
 
+def get_similarities(id1, id_comps, kind):
+    global state
+    global running_list_of_vecs
+    global bert_cache
+    global vector_cache
+    global names_cache
+    global types_cache
+    
+    num_comps = len(id_comps)
+    vec1 = vector_cache[int(id1)]
+    ## first input is just the same vector, num_comps times
+    in1 = np.reshape([vec1] * num_comps, [num_comps, 768]) 
+    vec_comps = [vector_cache[int(x)] for x in id_comps]
+    in2 = np.reshape(vec_comps, [num_comps, 768])
+    if kind == "arg":
+        ret = arg_model.predict([in1, in2])
+        return ret.reshape(num_comps)
+    elif kind == "ret":
+        ret = ret_model.predict([in1, in2])
+        return ret.reshape(num_comps)
+    elif (kind == "cosine"):
+        ret = cosine_similarity([vec1], in2)
+        return ret[0]
+    else:
+        raise Exception("Unexpected kind {}".format(kind1))
+        
+    
 ## Web API defined below.
 
 @app.route("/")
 def receive():
     global state
     global running_list_of_vecs
+    global bert_cache
+    global vector_cache
+    global names_cache
+    global types_cache
     action = request.args.get("action")
     if (state != "open"):
         if (action != "bert_vectorize") or (request.args.get("category") != "var"):
@@ -351,6 +417,19 @@ def receive():
     elif (action == "visualize"):
         id_list = request.args.getlist("id_list")
         tsne_plot(id_list)
+        ret = True
+    elif (action == "get_similarities"):
+        id1 = request.args.get("id1")
+        id_comps = request.args.getlist("id_comps")
+        kind = request.args.get("kind")
+        ret = get_similarities(id1, id_comps, kind)
+        #ret = np.where(ret==1.0,0.999999, ret) ## TODO: get rid of this soon
+        ret = np.array2string(ret, separator=",")
+    elif (action == "empty_cache!"):
+        bert_cache = {}
+        vector_cache = {}
+        names_cache = {}
+        types_cache = {}
         ret = True
     else:
          raise Exception("Unexpected action in request: {}".format(action))   

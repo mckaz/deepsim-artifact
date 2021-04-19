@@ -345,6 +345,7 @@ def receive():
     elif (action == "save_all_points"):
         print("HERE 1")
         value_type = request.args.get("value_type")
+        test = request.args.get("test")
         print("HERE 2")
         in1 = np.array(pairs[0])
         print("HERE 3")
@@ -352,7 +353,7 @@ def receive():
         print("HERE 4")
         targets = np.array(targets)
         print("HERE 5")
-        np.savez_compressed("data_" + value_type + "_{}".format(len(pairs[0])), input1=in1, input2=in2, output=targets)
+        np.savez_compressed(test+"data_" + value_type + "_HEADERONLY"+"_{}".format(len(pairs[0])), input1=in1, input2=in2, output=targets)
         print("HERE 6")
         ret = True
     else:

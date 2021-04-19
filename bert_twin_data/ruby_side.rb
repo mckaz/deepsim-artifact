@@ -1,9 +1,16 @@
 require "rdl"
 require "types/core"
 
-NUM_DATA_POINTS = 100000 ## number of data points to generate
+
+VAL_SET_PROGS = ['httparty', 'octokit.rb', 'meta-tags', 'mustache', 'meta-tags','reality', 'twitter_ebooks', 'vagrant-aws', 'method_source','faraday', 'wordpress-exploit-framework', 'shoes4', 'mongoid','md2key', 'childprocess', 'psd.rb', 'engine', 'rspec-rails','mongo', 'bh', 'her', 'newrelic_rpm', 'slack-ruby-bot', 'reality','ci', 'active_shipping', 'artoo', 'byebug', 'CompassApp','hamster', 'factory_girl', 'redis-rb', 'factory_bot', 'by_star','airbrake', 'seedbank', 'fog-xml', 'sensu', 'dpl','metasploit-framework']
+TEST_SET_PROGS = ['money', 'minimagick','tzinfo']
+               
+
+VAL_SET = true
+
+NUM_DATA_POINTS = VAL_SET ? 25000 : 250000 ## number of data points to generate
 DIFF_TYPE_SPLIT = 0.7 ## proportion of data points that correspond to *different* types
-VALUE_TYPE = "ret" ## "arg" or "ret"
+VALUE_TYPE = "arg" ## "arg" or "ret"
 
 DATA_FILE = "../../type-data.json"
 
@@ -23,6 +30,11 @@ class DataGenerator
     puts "Restructuring data...".green
     new_data = {}
     orig_data.each { |program, prog_data|
+      if VAL_SET
+        next unless VAL_SET_PROGS.include?(program)
+      else
+        next if (TEST_SET_PROGS.include?(program) || VAL_SET_PROGS.include?(program))
+      end
       new_data[program] = {}
       prog_data.each { |klass, meths|
         meths.each { |meth_name, meth_data|
@@ -96,18 +108,22 @@ class DataGenerator
     count = 1
     points.each { |in1, in2, _|
       puts "Vectorizing point ##{count}"
-      if VALUE_TYPE == "arg"
-        ## each input has structure [param name, source]
-        vectorize_var(in1[1], in1.object_id, in1[0])
-        vectorize_var(in2[1], in2.object_id, in2[0])
-      elsif VALUE_TYPE == "ret"
-        ## each input is the source code of a method
-        vectorize_var(in1, in1.object_id)
-        vectorize_var(in2, in2.object_id)
-      else
-        raise "Unexpected value type #{VALUE_TYPE}."
+      begin
+        if VALUE_TYPE == "arg"
+          ## each input has structure [param name, source]
+          vectorize_var(in1[1], in1.object_id, in1[0])
+          vectorize_var(in2[1], in2.object_id, in2[0])
+        elsif VALUE_TYPE == "ret"
+          ## each input is the source code of a method
+          vectorize_var(in1, in1.object_id)
+          vectorize_var(in2, in2.object_id)
+        else
+          raise "Unexpected value type #{VALUE_TYPE}."
+        end
+        count += 1
+      rescue Net::ReadTimeout => e
+        points.delete([in1, in2])
       end
-      count += 1
     }
   end
 
@@ -120,7 +136,8 @@ class DataGenerator
       params = { action: "save_point", in1: in1.object_id, in2: in2.object_id, target: target }
       RDL::Heuristic.send_query(params)
     }
-    params = { action: "save_all_points", value_type: "#{VALUE_TYPE}" }
+    test_string = VAL_SET ? "_VAL_" : ""
+    params = { action: "save_all_points", value_type: "#{VALUE_TYPE}", test: test_string }
     RDL::Heuristic.send_query(params)
   end
 
@@ -169,9 +186,9 @@ class DataGenerator
       end
       return nil if ast.nil? || !((ast.type == :def) || (ast.type == :defs))
       begin_pos = ast.loc.expression.begin_pos
-      locs = [ast.loc.name.begin_pos - begin_pos, ast.loc.name.end_pos - begin_pos-1] ## for now, let's just try using method name
+      locs = []#[ast.loc.name.begin_pos - begin_pos, ast.loc.name.end_pos - begin_pos-1] ## for now, let's just try using method name
       locs = locs + RDL::Heuristic.get_ret_sites(ast)
-      
+      return nil if locs.empty?
       #puts "Querying for return"
       #puts "Sanity check: "
       #locs.each_slice(2) { |b, e| puts "    #{source[b..e]} from #{b}..#{e}" }
@@ -207,7 +224,7 @@ class DataGenerator
         end
       }
     end
-
+    return [] if $use_only_param_position
     RDL::Heuristic.search_ast_for_var_locs(body, param_name, locs, begin_pos)
 
     raise "Expected even number of locations." unless (locs.length % 2) == 0
@@ -219,11 +236,19 @@ class DataGenerator
   
 end
 
+
+uri = URI "http://127.0.0.1:5000/"
+$http = Net::HTTP.new(uri.hostname, uri.port)
+$http.start
+
+
 DATA = DataGenerator.read_in_data(DATA_FILE)
 DATA = DataGenerator.restructure_data(DATA)
 POINTS = DataGenerator.generate_data_points(DATA)
 DataGenerator.vectorize_data(POINTS)
 DataGenerator.save_points(POINTS)
+
+$http.finish if $http
 
 
 
