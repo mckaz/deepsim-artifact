@@ -35,11 +35,12 @@ app = Flask(__name__)
 #    lang_tokenizer = pickle.load(handle)
     
 ## LOAD SAVED MODEL
-#model = load_model('models/twin__nc_TOP__PROG_model.h5')#twin__names_TOP__500000_PROG_model.h5')#
 #arg_model = load_model('bert_twin_data/models/twin_bert_arg_200_84349_model.h5')
 #ret_model = load_model('bert_twin_data/models/twin_bert_ret_200_99167_model.h5')
-arg_model = load_model('bert_twin_data/twin_bert_arg_150epochs_100000dp_0.001lr_model.h5')#'bert_twin_data/models/twin_bert_arg_200_208398_model.h5')
-ret_model = load_model('bert_twin_data/twin_bert_ret_100epochs_100000dp_0.001lr_model.h5')#'bert_twin_data/models/twin_bert_ret_200_248215_model.h5')
+default_arg_model = load_model('bert_twin_data/twin_bert_arg_150epochs_100000dp_0.001lr_model.h5')#'bert_twin_data/models/twin_bert_arg_200_208398_model.h5')
+headeronly_arg_model = load_model('bert_twin_data/twin_bert_arg_50_HEADERONLY_epochs_25000dp_5e-05lr_model.h5')
+default_ret_model = load_model('bert_twin_data/twin_bert_ret_100epochs_100000dp_0.001lr_model.h5')#'bert_twin_data/models/twin_bert_ret_200_248215_model.h5')
+namesonly_ret_model = load_model('bert_twin_data/twin_bert_ret_50_NAMESONLY_epochs_25000dp_5e-05lr_model.h5')
 
 tokenizer = RobertaTokenizer.from_pretrained("microsoft/codebert-base")
 bert_model = TFRobertaModel.from_pretrained("microsoft/codebert-base")
@@ -306,15 +307,15 @@ def get_similarity(id1, id2, kind1, kind2):
     if (kind1 != kind2) or (kind1 == "var"):
         return cosine_similarity([in1], [in2])[0][0]
     elif (kind1 == "arg"):
-        ret = arg_model.predict([np.reshape(in1, [1, 768]), np.reshape(in2, [1,768])])
+        ret = default_arg_model.predict([np.reshape(in1, [1, 768]), np.reshape(in2, [1,768])])
         return ret[0][0]
     elif (kind1 == "ret"):
-        ret = ret_model.predict([np.reshape(in1, [1, 768]), np.reshape(in2, [1,768])])
+        ret = default_ret_model.predict([np.reshape(in1, [1, 768]), np.reshape(in2, [1,768])])
         return ret[0][0]
     else:
         raise Exception("Unexpected kind {}".format(kind1))
 
-def get_similarities(id1, id_comps, kind):
+def get_similarities(id1, id_comps, kind, namesonly, headeronly):
     global state
     global running_list_of_vecs
     global bert_cache
@@ -329,10 +330,16 @@ def get_similarities(id1, id_comps, kind):
     vec_comps = [vector_cache[int(x)] for x in id_comps]
     in2 = np.reshape(vec_comps, [num_comps, 768])
     if kind == "arg":
-        ret = arg_model.predict([in1, in2])
+        if (headeronly == "true"):
+            ret = headeronly_arg_model.predict([in1, in2])
+        else:                
+            ret = default_arg_model.predict([in1, in2])
         return ret.reshape(num_comps)
     elif kind == "ret":
-        ret = ret_model.predict([in1, in2])
+        if (namesonly == "true"):
+            ret = namesonly_ret_model.predict([in1, in2])
+        else:
+            ret = default_ret_model.predict([in1, in2])
         return ret.reshape(num_comps)
     elif (kind == "cosine"):
         ret = cosine_similarity([vec1], in2)
@@ -422,7 +429,17 @@ def receive():
         id1 = request.args.get("id1")
         id_comps = request.args.getlist("id_comps")
         kind = request.args.get("kind")
-        ret = get_similarities(id1, id_comps, kind)
+        namesonly = request.args.get("namesonly")
+        #if (namesonly == "true"):
+        #    namesonly = True
+        #else:
+        #    nameonly = False
+        headeronly = request.args.get("headeronly")
+        #if (headeronly == "true"):
+        #    headeronly = True
+        #else:
+        #    headeronly = False
+        ret = get_similarities(id1, id_comps, kind, namesonly, headeronly)
         #ret = np.where(ret==1.0,0.999999, ret) ## TODO: get rid of this soon
         ret = np.array2string(ret, separator=",")
     elif (action == "empty_cache!"):
